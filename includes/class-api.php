@@ -311,6 +311,38 @@ class AlarndPI
 
         error_log("Processing " . count($items) . " items");
 
+        $total_quantity = 0;
+        $non_freestyle_items = [];
+
+        foreach ($items as $item) {
+            if ($item['product_id'] !== 'freestyle') {
+                $total_quantity += $item['quantity'];
+                $non_freestyle_items[] = $item;
+            }
+        }
+
+        $dynamic_price = 0;
+
+        if (!empty($non_freestyle_items)) {
+            $first_non_freestyle_item = $non_freestyle_items[0];
+            $product_id = $first_non_freestyle_item['product_id'];
+            $product = wc_get_product($product_id);
+
+            if ($product) {
+                $enable_custom_quantity = get_post_meta($product_id, 'enable_custom_quantity', true);
+
+                if ($enable_custom_quantity) {
+                    $steps = get_field('quantity_steps', $product_id);
+                    $is_quantity_steps = true;
+                } else {
+                    $steps = get_field('discount_steps', $product_id);
+                    $is_quantity_steps = false;
+                }
+
+                $dynamic_price = $this->calculate_dynamic_price($steps, $total_quantity, $product, $is_quantity_steps);
+            }
+        }
+
         foreach ($items as $item) {
             $order_id = $item['order_id'];
             $product_id = $item['product_id'];
@@ -338,30 +370,18 @@ class AlarndPI
 
             if ($product_id === 'freestyle') {
                 $product_name = 'Freestyle Item';
-                $dynamic_price = $subtotal / $quantity;
+                $dynamic_price_item = $subtotal / $quantity;
 
                 $order_item->set_quantity($quantity);
                 $order_item->set_name($product_name);
-                $order_item->set_subtotal($dynamic_price * $quantity);
-                $order_item->set_total($dynamic_price * $quantity);
+                $order_item->set_subtotal($dynamic_price_item * $quantity);
+                $order_item->set_total($dynamic_price_item * $quantity);
             } else {
                 $product = wc_get_product($product_id);
                 if (!$product) {
                     return new WP_Error('invalid_product', 'Invalid product ID', array('status' => 400));
                 }
 
-                $enable_custom_quantity = get_post_meta($product_id, 'enable_custom_quantity', true);
-
-                if ($enable_custom_quantity) {
-                    $steps = get_field('quantity_steps', $product_id);
-                    $is_quantity_steps = true;
-                } else {
-                    $steps = get_field('discount_steps', $product_id);
-                    $is_quantity_steps = false;
-                }
-
-                // Calculate the dynamic price
-                $dynamic_price = $this->calculate_dynamic_price($steps, $quantity, $product, $is_quantity_steps);
                 $product_name = $product->get_name();
 
                 $order_item->set_product_id($product_id);
@@ -394,7 +414,6 @@ class AlarndPI
             }
 
             $order->add_item($order_item);
-
             $order->calculate_totals();
             $order->save();
         }

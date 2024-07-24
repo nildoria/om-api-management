@@ -100,7 +100,7 @@ function process_order_data($order)
     // $password = 'punctual';
     // $auth = base64_encode("$username:$password");
 
-    $jwtToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL29yZGVybWFuYWdlLnRlc3QiLCJpYXQiOjE3MjExNDMyMTMsIm5iZiI6MTcyMTE0MzIxMywiZXhwIjoxNzIxNzQ4MDEzLCJkYXRhIjp7InVzZXIiOnsiaWQiOiIxIn19fQ.Hs6OXlqf8KGnj2h4ZMsCF5cxMam6tKUkMC4o3T2BLG4';
+    $jwtToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL29yZGVybWFuYWdlLnRlc3QiLCJpYXQiOjE3MjE4MTg4ODcsIm5iZiI6MTcyMTgxODg4NywiZXhwIjoxNzIyNDIzNjg3LCJkYXRhIjp7InVzZXIiOnsiaWQiOiIxIn19fQ.yVDwkfyLoFGakhbH6bGfrptsu3_AQRMlZ37nIN7D6Y4';
 
     // Send the order data to the other domain
     $response = wp_remote_post(
