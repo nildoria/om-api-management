@@ -3,64 +3,68 @@
 Plugin Name: API Management for AllAround
 Plugin URI: https://allaround.co.il/
 Description: AllAround API Management for main site and Mini Store.
-Version: 0.1
+Version: 0.1.2
 Author: AllAround
 Text Domain: hello-elementor
 */
 
 // If this file is called directly, abort.
-if ( ! defined( 'WPINC' ) ) {
+if (!defined('WPINC')) {
 	die;
 }
 
 
-class AlrndAPIManagement {
+class AlrndAPIManagement
+{
 
-    /**
-     * Plugin version.
-     *
-     * @var string
-     */
-    const version = '0.1';
+	/**
+	 * Plugin version.
+	 *
+	 * @var string
+	 */
+	const version = '0.1';
 
-    /**
+	/**
 	 * Call this method to get the singleton
 	 *
 	 * @return AlrndAPIManagement|null
 	 */
-	public static function instance() {
+	public static function instance()
+	{
 
 		static $instance = null;
-		if ( is_null( $instance ) ) {
+		if (is_null($instance)) {
 			$instance = new AlrndAPIManagement();
 		}
 
 		return $instance;
 	}
 
-	public function __construct() {
+	public function __construct()
+	{
 
-        $this->define_constanst();
+		$this->define_constanst();
 
-		register_activation_hook( __FILE__, array( $this, 'activation' ) );
-		register_deactivation_hook( __FILE__, array( $this, 'deactivation' ) );
+		register_activation_hook(__FILE__, array($this, 'activation'));
+		register_deactivation_hook(__FILE__, array($this, 'deactivation'));
 
 		//run on uninstall
-		register_uninstall_hook( __FILE__, array( 'AlrndAPIManagement', 'uninstall' ) );
+		register_uninstall_hook(__FILE__, array('AlrndAPIManagement', 'uninstall'));
 
-        add_action( 'plugins_loaded', array( $this, 'init' ) );
+		add_action('plugins_loaded', array($this, 'init'));
 
-		load_plugin_textdomain( 'hello-elementor', false, basename( dirname( __FILE__ ) ) . '/languages' );
+		load_plugin_textdomain('hello-elementor', false, basename(dirname(__FILE__)) . '/languages');
 	}
 
-    /**
+	/**
 	 * Init
 	 */
-	public function init() {
-	    require_once(AlRNDAPI_PATH . '/includes/functions.php');
+	public function init()
+	{
+		require_once(AlRNDAPI_PATH . '/includes/functions.php');
 		require_once(AlRNDAPI_PATH . '/includes/class-api.php');
 		require_once(AlRNDAPI_PATH . '/includes/class-hook.php');
-    }
+	}
 
 	/**
 	 *  Runs on plugin uninstall.
@@ -68,7 +72,9 @@ class AlrndAPIManagement {
 	 *
 	 * @since 0.1
 	 */
-	public static function uninstall() {}
+	public static function uninstall()
+	{
+	}
 
 
 	/**
@@ -76,30 +82,35 @@ class AlrndAPIManagement {
 	 *
 	 * @return void
 	 */
-	public function activation() {}
+	public function activation()
+	{
+	}
 
 	/**
 	 * plugin activation
 	 *
 	 * @return void
 	 */
-	public function deactivation() {}
+	public function deactivation()
+	{
+	}
 
-    /**
-     * Define require constansts
-     * 
-     * @return void
-     */
-    public function define_constanst(){
-		define( 'AlRNDAPI_VERSION', self::version );
-		define( "AlRNDAPI_URL", plugins_url( "/" , __FILE__ ) );
-		define( "AlRNDAPI_PATH", plugin_dir_path( __FILE__ ) );
-    }
+	/**
+	 * Define require constansts
+	 * 
+	 * @return void
+	 */
+	public function define_constanst()
+	{
+		define('AlRNDAPI_VERSION', self::version);
+		define("AlRNDAPI_URL", plugins_url("/", __FILE__));
+		define("AlRNDAPI_PATH", plugin_dir_path(__FILE__));
+	}
 
-	
+
 }
 
-( new AlrndAPIManagement() );
+(new AlrndAPIManagement());
 
 
 

@@ -259,13 +259,15 @@ class AlarndPI
         //     return new WP_Error('invalid_nonce', 'Nonce is not valid', array('status' => 403));
         // }
 
+        $newly_added_total = 0;
+
         // Handle item duplication
         if ($item_id && $method === 'duplicateItem') {
-            $new_item = $this->duplicate_order_item($order_id, $item_id);
+            $new_item = $this->duplicate_order_item($order_id, $item_id, $newly_added_total);
             if (is_wp_error($new_item)) {
                 return $new_item;
             }
-            return new WP_REST_Response('Item duplicated successfully', 200);
+            return new WP_REST_Response(array('message' => 'Item duplicated successfully', 'newly_added_total' => $newly_added_total), 200);
         }
 
         // Handle item deletion
@@ -274,7 +276,7 @@ class AlarndPI
             if (is_wp_error($result)) {
                 return $result;
             }
-            return new WP_REST_Response('Item deleted successfully', 200);
+            return new WP_REST_Response(array('message' => 'Item deleted successfully', 'deleted_item_total' => $result), 200);
         }
 
         // Handle adding a new item to the order
@@ -313,6 +315,7 @@ class AlarndPI
 
         $total_quantity = 0;
         $non_freestyle_items = [];
+        $newly_added_total = 0;
 
         foreach ($items as $item) {
             if ($item['product_id'] !== 'freestyle') {
@@ -376,6 +379,7 @@ class AlarndPI
                 $order_item->set_name($product_name);
                 $order_item->set_subtotal($dynamic_price_item * $quantity);
                 $order_item->set_total($dynamic_price_item * $quantity);
+                $newly_added_total += $dynamic_price_item * $quantity;
             } else {
                 $product = wc_get_product($product_id);
                 if (!$product) {
@@ -389,6 +393,7 @@ class AlarndPI
                 $order_item->set_name($product_name);
                 $order_item->set_subtotal($dynamic_price * $quantity);
                 $order_item->set_total($dynamic_price * $quantity);
+                $newly_added_total += $dynamic_price * $quantity;
             }
 
             if (!empty($color)) {
@@ -418,9 +423,8 @@ class AlarndPI
             $order->save();
         }
 
-        return new WP_REST_Response('Item(s) added successfully', 200);
+        return new WP_REST_Response(array('message' => 'Item(s) added successfully', 'newly_added_total' => $newly_added_total), 200);
     }
-
 
 
     /**
@@ -661,7 +665,7 @@ class AlarndPI
     /**
      * Duplicate Item API.
      */
-    public function duplicate_order_item($order_id, $item_id)
+    public function duplicate_order_item($order_id, $item_id, &$newly_added_total)
     {
         // Get the order
         $order = wc_get_order($order_id);
@@ -686,6 +690,9 @@ class AlarndPI
         $new_item->set_name($original_item->get_name());
         $new_item->set_subtotal($original_item->get_subtotal());
         $new_item->set_total($original_item->get_total());
+
+        // Add the item's total to the newly_added_total
+        $newly_added_total += $original_item->get_total();
 
         // Copy meta data
         foreach ($original_item->get_meta_data() as $meta) {
@@ -717,11 +724,17 @@ class AlarndPI
             return new WP_Error('invalid_item', 'Invalid item ID', array('status' => 400));
         }
 
+        // Get the total amount of the item being deleted
+        $item_total = $item->get_total();
+
         $order->remove_item($item_id);
         $order->calculate_totals();
         $order->save();
 
-        return true;
+        // return true;
+
+        // Return the negative total amount of the deleted item
+        return -$item_total;
     }
 
     /**
