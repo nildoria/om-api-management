@@ -790,6 +790,8 @@ class AlarndPI
             // Fetch custom fields using ACF
             $if_group_enabled = get_field('group_enable', $product_id);
             $if_custom_quantity_enabled = get_field('enable_custom_quantity', $product_id);
+            // Check if the product is a variable product
+            $is_variable_product = $product->is_type('variable');
 
             $colors = null; // Initialize colors to null
             $available_sizes = null; // Initialize sizes to null
@@ -828,6 +830,50 @@ class AlarndPI
 
                 $is_custom_quantity = false;
                 $is_group_quantity = true;
+            } elseif ($is_variable_product) {
+                // get the variable product
+                $variable_product = new WC_Product_Variable($product_id);
+                $all_variations = $variable_product->get_available_variations();
+                $quantity_steps = [];
+                $size_index = 0;// Get the attribute taxonomy for the size
+                $attributes = $variable_product->get_variation_attributes();
+                $size_attribute_key1 = array_keys($attributes)[0];
+                $size_attribute_key2 = array_keys($attributes)[1];
+
+
+                foreach ($all_variations as $variation) {
+                    $size = reset($variation['attributes']);
+                    $quantity = next($variation['attributes']);
+                    $amount = strval($variation['display_regular_price']);
+
+                    if (!isset($quantity_steps[$size])) {
+                        $size_index++;
+                        $quantity_steps[$size] = [
+                            'id' => $product_id . '-' . $size_index,
+                            'name' => $size,
+                            'attribute_key1' => $size_attribute_key1,
+                            'attribute_key2' => $size_attribute_key2,
+                            'steps' => []
+                        ];
+                    }
+
+                    $quantity_steps[$size]['steps'][] = [
+                        'quantity' => $quantity,
+                        'amount' => $amount,
+                    ];
+                }
+
+                // Sort steps by quantity for each size
+                foreach ($quantity_steps as &$size_data) {
+                    usort($size_data['steps'], function ($a, $b) {
+                        return intval($a['quantity']) - intval($b['quantity']);
+                    });
+                }
+
+                $quantity_steps = array_values($quantity_steps);
+
+                $is_custom_quantity = false;
+                $is_group_quantity = false;
             } else {
                 $quantity_steps = null;
                 $is_custom_quantity = false;
@@ -852,6 +898,7 @@ class AlarndPI
                 'price' => $product->get_price(),
                 'is_custom_quantity' => $is_custom_quantity,
                 'is_group_quantity' => $is_group_quantity,
+                'is_variable_product' => $is_variable_product,
                 'quantity_steps' => $quantity_steps,
                 'colors' => $colors,
                 'sizes' => $available_sizes,

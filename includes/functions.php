@@ -226,6 +226,8 @@ function process_order_data($order, $order_source)
         );
     }
 
+    error_log('Shipping lines: ' . print_r($shipping_lines, true));
+
     // Get the order totoal
     $order_total = $order->get_total();
 
