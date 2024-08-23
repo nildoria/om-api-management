@@ -835,11 +835,10 @@ class AlarndPI
                 $variable_product = new WC_Product_Variable($product_id);
                 $all_variations = $variable_product->get_available_variations();
                 $quantity_steps = [];
-                $size_index = 0;// Get the attribute taxonomy for the size
+                $size_index = 0;
                 $attributes = $variable_product->get_variation_attributes();
                 $size_attribute_key1 = array_keys($attributes)[0];
                 $size_attribute_key2 = array_keys($attributes)[1];
-
 
                 foreach ($all_variations as $variation) {
                     $size = reset($variation['attributes']);
@@ -911,6 +910,7 @@ class AlarndPI
 
         return new WP_REST_Response($product_list, 200);
     }
+
 
     /**
      * Order Management Functions END.
