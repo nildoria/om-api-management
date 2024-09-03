@@ -143,6 +143,8 @@ class AlarndPI
         $price = isset($request_data['price']) ? $request_data['price'] : '';
         $quantity = isset($request_data['quantity']) ? $request_data['quantity'] : '';
         $upsell_product_id = isset($request_data['product_id']) ? $request_data['product_id'] : '';
+        $customer_name = isset($request_data['customer_name']) ? $request_data['customer_name'] : '';
+        $customer_email = isset($request_data['customer_email']) ? $request_data['customer_email'] : '';
         $customer_phone = isset($request_data['customer_phone']) ? $request_data['customer_phone'] : '';
         $proof_id = isset($request_data['proof_id']) ? $request_data['proof_id'] : '';
         $referenceID = isset($request_data['referenceID']) ? $request_data['referenceID'] : '';
@@ -158,14 +160,10 @@ class AlarndPI
         }
 
         // Dummy product ID
-        $dummy_product_id = 885; // Replace 123 with the actual dummy product ID
+        $dummy_product_id = 12088; // Replace 123 with the actual dummy product ID
 
         // Load the old order
         $old_order = wc_get_order($order_id);
-
-        if (!$old_order) {
-            return new WP_Error('invalid_order', 'Order does not exist.', array('status' => 404));
-        }
 
         // Add the dummy product to the order
         $product = wc_get_product($dummy_product_id);
@@ -176,8 +174,44 @@ class AlarndPI
         // Create a new order
         $new_order = wc_create_order();
 
-        // Set the parent order ID
-        $new_order->set_parent_id($order_id);
+        if ($old_order) {
+            // Set the parent order ID
+            $new_order->set_parent_id($order_id);
+
+            // Set the customer ID from the old order to the new order
+            $customer_id = $old_order->get_customer_id();
+            $new_order->set_customer_id($customer_id);
+
+            // Copy billing information from old order to new order
+            $new_order->set_billing_first_name($old_order->get_billing_first_name());
+            $new_order->set_billing_last_name($old_order->get_billing_last_name());
+            $new_order->set_billing_address_1($old_order->get_billing_address_1());
+            $new_order->set_billing_address_2($old_order->get_billing_address_2());
+            $new_order->set_billing_city($old_order->get_billing_city());
+            $new_order->set_billing_state($old_order->get_billing_state());
+            $new_order->set_billing_postcode($old_order->get_billing_postcode());
+            $new_order->set_billing_country($old_order->get_billing_country());
+            $new_order->set_billing_email($old_order->get_billing_email());
+            $new_order->set_billing_phone($old_order->get_billing_phone());
+
+            // Copy shipping information from old order to new order
+            $new_order->set_shipping_first_name($old_order->get_shipping_first_name());
+            $new_order->set_shipping_last_name($old_order->get_shipping_last_name());
+            $new_order->set_shipping_address_1($old_order->get_shipping_address_1());
+            $new_order->set_shipping_address_2($old_order->get_shipping_address_2());
+            $new_order->set_shipping_city($old_order->get_shipping_city());
+            $new_order->set_shipping_state($old_order->get_shipping_state());
+            $new_order->set_shipping_postcode($old_order->get_shipping_postcode());
+            $new_order->set_shipping_country($old_order->get_shipping_country());
+        } else {
+            // Copy billing information from old order to new order
+            $new_order->set_billing_first_name($customer_name);
+            $new_order->set_billing_email($customer_email);
+            $new_order->set_billing_phone($customer_phone);
+
+            // Copy shipping information from old order to new order
+            $new_order->set_shipping_first_name($customer_name);
+        }
 
         // Add each item to the new order
         foreach ($items as $item) {
@@ -229,6 +263,14 @@ class AlarndPI
         $new_order->save();
 
         $new_order_id = $new_order->get_id();
+
+        if (function_exists('send_order_to_other_domain')) {
+            send_order_to_other_domain($new_order_id, $request_data, $new_order);
+        } else {
+            // Handle the case where the function is not available
+            error_log('Function send_order_to_other_domain is not defined');
+            // You might want to add alternative logic here
+        }
 
         return rest_ensure_response(
             array(
