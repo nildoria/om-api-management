@@ -118,7 +118,9 @@ class AlarndPI
             array(
                 'methods' => 'POST',
                 'callback' => array($this, 'handle_rearrange_order_items'),
-                'permission_callback' => '__return_true',
+                'permission_callback' => function () {
+                    return current_user_can('edit_shop_orders'); // Ensure the user has the right capability
+                },
             )
         );
         // Add more routes here
@@ -791,13 +793,16 @@ class AlarndPI
             return new WP_Error('missing_data', 'Missing parameters', array('status' => 400));
         }
 
-        $new_order = array_map('intval', $new_order); // Ensure new_order is an array of integers
+        // Ensure new_order is an array of integers
+        $new_order = array_map('intval', $new_order);
 
+        // Rearrange the order items, but rollback if any error occurs
         $result = $this->rearrange_order_items($order_id, $new_order);
 
         if (is_wp_error($result)) {
             return $result;
         }
+
         return new WP_REST_Response(
             array(
                 'success' => true,
@@ -1003,47 +1008,59 @@ class AlarndPI
      */
     function rearrange_order_items($order_id, $new_order)
     {
-        error_log("Starting to rearrange order items");
-        error_log("Order ID: " . $order_id);
-        error_log("New Order: " . print_r($new_order, true));
+        // error_log("Starting to rearrange order items");
+        // error_log("Order ID: " . $order_id);
+        // error_log("New Order: " . print_r($new_order, true));
 
+        // Fetch the order
         $order = wc_get_order($order_id);
-
         if (!$order) {
             error_log("Invalid order ID: " . $order_id);
             return new WP_Error('invalid_order', 'Invalid order ID', array('status' => 400));
         }
 
-        $items = $order->get_items('line_item');
-        error_log("Current items: " . print_r($items, true));
+        // Fetch the original items before removing them
+        $original_items = $order->get_items('line_item');
+        error_log("Original items: " . print_r($original_items, true));
 
         // Create an associative array with item IDs as keys
         $items_array = [];
-        foreach ($items as $item_id => $item) {
+        foreach ($original_items as $item_id => $item) {
             $items_array[$item_id] = $item;
-            error_log("Storing item ID: " . $item_id);
         }
 
-        // Remove all existing items
-        foreach ($items as $item_id => $item) {
-            $order->remove_item($item_id);
-            error_log("Removed item ID: " . $item_id);
-        }
-
-        // Add items back in the new order
-        foreach ($new_order as $item_id) {
-            if (isset($items_array[$item_id])) {
-                $order->add_item($items_array[$item_id]);
-                error_log("Added item ID: " . $item_id);
-            } else {
-                error_log("Item ID not found in items_array: " . $item_id);
+        try {
+            // Start by removing all existing items (backup available in $items_array)
+            foreach ($original_items as $item_id => $item) {
+                $order->remove_item($item_id);
             }
-        }
 
-        // Save the order
-        $order->calculate_totals();
-        $order->save();
-        error_log("Order totals calculated and saved.");
+            // Add items back in the new order
+            foreach ($new_order as $item_id) {
+                if (isset($items_array[$item_id])) {
+                    $order->add_item($items_array[$item_id]);
+                } else {
+                    throw new Exception("Item ID not found in items_array: " . $item_id);
+                }
+            }
+
+            // Calculate and save the order
+            $order->calculate_totals();
+            $order->save();
+            error_log("Order totals calculated and saved.");
+
+        } catch (Exception $e) {
+            error_log("Error occurred: " . $e->getMessage());
+
+            // Rollback: Restore original items if something goes wrong
+            foreach ($original_items as $item_id => $item) {
+                $order->add_item($item); // Add back the original items
+            }
+            $order->calculate_totals(); // Recalculate the totals
+            $order->save(); // Save the order again
+
+            return new WP_Error('order_rearrangement_failed', 'Failed to rearrange order items. Rolled back to original order.', array('status' => 500));
+        }
 
         return true;
     }
